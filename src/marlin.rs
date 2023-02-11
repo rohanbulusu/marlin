@@ -58,19 +58,25 @@ struct State {
 }
 
 impl State {
-    // Creating some of the wgpu types requires async code
+    
+    fn generate_gpu_handle() -> wgpu::Instance {
+        wgpu::Instance::new(wgpu::Backends::all())
+    }
+
+    fn generate_surface(window: &Window, gpu: &wgpu::Instance) -> wgpu::Surface {
+        unsafe { 
+            gpu.create_surface(window) 
+        }
+    }
+
     async fn new(window: Window) -> Self {
         let size = window.inner_size();
 
-        // The instance is a handle to our GPU
-        // Backends::all => Vulkan + Metal + DX12 + Browser WebGPU
-        let instance = wgpu::Instance::new(wgpu::Backends::all());
+        let instance = State::generate_gpu_handle();
         
-        // # Safety
-        //
         // The surface needs to live as long as the window that created it.
         // State owns the window so this should be safe.
-        let surface = unsafe { instance.create_surface(&window) };
+        let surface = State::generate_surface(&window, &instance);
 
         let adapter = instance.request_adapter(
             &wgpu::RequestAdapterOptions {
