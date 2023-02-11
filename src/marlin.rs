@@ -63,22 +63,21 @@ impl State {
         wgpu::Instance::new(wgpu::Backends::all())
     }
 
-    fn generate_surface(window: &Window, gpu: &wgpu::Instance) -> wgpu::Surface {
+    fn generate_surface(window: &Window, gpu_handle: &wgpu::Instance) -> wgpu::Surface {
         unsafe { 
-            gpu.create_surface(window) 
+            gpu_handle.create_surface(window) 
         }
     }
 
     async fn new(window: Window) -> Self {
         let size = window.inner_size();
 
-        let gpu = State::generate_gpu_handle();
+        let gpu_handle = State::generate_gpu_handle();
         
         // The surface needs to live as long as the window that created it.
-        // State owns the window so this should be safe.
-        let surface = State::generate_surface(&window, &gpu);
+        let surface = State::generate_surface(&window, &gpu_handle);
 
-        let adapter = gpu.request_adapter(
+        let adapter = gpu_handle.request_adapter(
             &wgpu::RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::default(),
                 compatible_surface: Some(&surface),
