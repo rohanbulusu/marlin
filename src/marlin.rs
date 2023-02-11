@@ -77,7 +77,7 @@ impl State {
         // The surface needs to live as long as the window that created it.
         let surface = State::generate_surface(&window, &gpu_handle);
 
-        let adapter = gpu_handle.request_adapter(
+        let gpu = gpu_handle.request_adapter(
             &wgpu::RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::default(),
                 compatible_surface: Some(&surface),
@@ -85,7 +85,7 @@ impl State {
             },
         ).await.unwrap();
 
-        let (device, queue) = adapter.request_device(
+        let (device, queue) = gpu.request_device(
             &wgpu::DeviceDescriptor {
                 features: wgpu::Features::empty(),
                 // WebGL doesn't support all of wgpu's features, so if
@@ -102,7 +102,7 @@ impl State {
 
         let config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
-            format: surface.get_supported_formats(&adapter)[0],
+            format: surface.get_supported_formats(&gpu)[0],
             width: size.width,
             height: size.height,
             present_mode: wgpu::PresentMode::Fifo,
