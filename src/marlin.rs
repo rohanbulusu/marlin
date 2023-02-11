@@ -69,21 +69,25 @@ impl State {
         }
     }
 
+    async fn generate_gpu_adapter(gpu_handle: &wgpu::Instance, surface: &wgpu::Surface) -> wgpu::Adapter {
+        gpu_handle.request_adapter(
+            &wgpu::RequestAdapterOptions {
+                power_preference: wgpu::PowerPreference::default(),
+                compatible_surface: Some(surface),
+                force_fallback_adapter: false,
+            },
+        ).await.unwrap()
+    }
+
     async fn new(window: Window) -> Self {
         let size = window.inner_size();
 
-        let gpu_handle = State::generate_gpu_handle();
+        let gpu_handle = Self::generate_gpu_handle();
         
         // The surface needs to live as long as the window that created it.
-        let surface = State::generate_surface(&window, &gpu_handle);
+        let surface = Self::generate_surface(&window, &gpu_handle);
 
-        let gpu = gpu_handle.request_adapter(
-            &wgpu::RequestAdapterOptions {
-                power_preference: wgpu::PowerPreference::default(),
-                compatible_surface: Some(&surface),
-                force_fallback_adapter: false,
-            },
-        ).await.unwrap();
+        let gpu = Self::generate_gpu_adapter(&gpu_handle, &surface).await;
 
         let (device, queue) = gpu.request_device(
             &wgpu::DeviceDescriptor {
