@@ -121,7 +121,10 @@ fn generate_render_pipeline_layout(gpu: &wgpu::Device) -> wgpu::PipelineLayout {
     })
 }
 
-fn generate_render_pipeline(gpu: &wgpu::Device, layout: &wgpu::PipelineLayout, config: &wgpu::SurfaceConfiguration, shader: &wgpu::ShaderModule) -> wgpu::RenderPipeline {
+fn generate_render_pipeline(gpu: &wgpu::Device, config: &wgpu::SurfaceConfiguration, shader: &wgpu::ShaderModule) -> wgpu::RenderPipeline {
+    
+    let layout = &generate_render_pipeline_layout(gpu);
+
     gpu.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
         label: Some("Render Pipeline"),
         layout: Some(layout),
@@ -171,6 +174,16 @@ fn create_vertex_buffer(gpu: &wgpu::Device, buf_name: &str, vertices: &[Vertex])
     )
 }
 
+fn create_index_buffer(gpu: &wgpu::Device, buf_name: &str, indices: &[u32]) -> wgpu::Buffer {
+    gpu.create_buffer_init(
+        &wgpu::util::BufferInitDescriptor {
+            label: Some(buf_name),
+            contents: bytemuck::cast_slice(indices),
+            usage: wgpu::BufferUsages::INDEX,
+        }
+    )
+}
+
 impl State {
 
     async fn new(window: Window) -> Self {
@@ -189,19 +202,11 @@ impl State {
 
         let shader = generate_shader_module(&gpu, include_str!("shader.wgsl"));
 
-        let render_pipeline_layout = generate_render_pipeline_layout(&gpu);
-
-        let render_pipeline = generate_render_pipeline(&gpu, &render_pipeline_layout, &config, &shader);
+        let render_pipeline = generate_render_pipeline(&gpu, &config, &shader);
 
         let vertex_buffer = create_vertex_buffer(&gpu, "Vertex Buffer", VERTICES);
 
-        let index_buffer = gpu.create_buffer_init(
-            &wgpu::util::BufferInitDescriptor {
-                label: Some("Index Buffer"),
-                contents: bytemuck::cast_slice(INDICES),
-                usage: wgpu::BufferUsages::INDEX,
-            }
-        );
+        let index_buffer = create_index_buffer(&gpu, "Index Buffer", INDICES);
 
         Self {
             window,
