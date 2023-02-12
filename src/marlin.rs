@@ -130,12 +130,12 @@ fn generate_render_pipeline(gpu: &wgpu::Device, config: &wgpu::SurfaceConfigurat
         layout: Some(layout),
         vertex: wgpu::VertexState {
             module: shader,
-            entry_point: "vs_main", // 1.
+            entry_point: "vert_main", // 1.
             buffers: &[Vertex::desc()], // 2.
         },
         fragment: Some(wgpu::FragmentState { // 3.
             module: &shader,
-            entry_point: "fs_main",
+            entry_point: "frag_main",
             targets: &[Some(wgpu::ColorTargetState { // 4.
                 format: config.format,
                 blend: Some(wgpu::BlendState::REPLACE),
