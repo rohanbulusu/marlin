@@ -57,13 +57,21 @@ struct State {
     index_buffer: wgpu::Buffer
 }
 
+fn get_device_limitations() -> wgpu::Limits {
+    // if running on WebAssembly
+    if cfg!(target_arch = "wasm32") {
+        return wgpu::Limits::downlevel_webgl2_defaults();
+    }
+    return wgpu::Limits::default();
+}
+
 impl State {
     
     fn generate_gpu_handle() -> wgpu::Instance {
         wgpu::Instance::new(wgpu::Backends::all())
     }
 
-    fn generate_surface(window: &Window, gpu_handle: &wgpu::Instance) -> wgpu::Surface {
+    fn create_gpu_context(window: &Window, gpu_handle: &wgpu::Instance) -> wgpu::Surface {
         unsafe { 
             gpu_handle.create_surface(window) 
         }
@@ -85,20 +93,14 @@ impl State {
         let gpu_handle = Self::generate_gpu_handle();
         
         // The surface needs to live as long as the window that created it.
-        let surface = Self::generate_surface(&window, &gpu_handle);
+        let surface = Self::create_gpu_context(&window, &gpu_handle);
 
         let gpu = Self::generate_gpu_adapter(&gpu_handle, &surface).await;
 
         let (device, queue) = gpu.request_device(
             &wgpu::DeviceDescriptor {
                 features: wgpu::Features::empty(),
-                // WebGL doesn't support all of wgpu's features, so if
-                // we're building for the web we'll have to disable some.
-                limits: if cfg!(target_arch = "wasm32") {
-                    wgpu::Limits::downlevel_webgl2_defaults()
-                } else {
-                    wgpu::Limits::default()
-                },
+                limits: get_device_limitations(),
                 label: None,
             },
             None, // Trace path
