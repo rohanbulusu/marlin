@@ -157,7 +157,7 @@ fn generate_render_pipeline(gpu: &wgpu::Device, config: &wgpu::SurfaceConfigurat
             mask: !0,
             alpha_to_coverage_enabled: false,
         },
-        multiview: None, // 5.
+        multiview: None
     })
 }
 
@@ -215,6 +215,10 @@ impl State {
             vertex_buffer,
             index_buffer
         }
+    }
+
+    pub fn update_vertex_buffer(&mut self, vertices: &[Vertex]) {
+        self.vertex_buffer = create_vertex_buffer(&self.device, "Vertex Buffer", vertices)
     }
 
     pub fn window(&self) -> &Window {
