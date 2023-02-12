@@ -106,6 +106,13 @@ fn get_context_configuration(window: &Window, surface: &wgpu::Surface, gpu_adapt
     }
 }
 
+fn generate_shader_module(gpu: &wgpu::Device, file_as_str: &str) -> wgpu::ShaderModule {
+    gpu.create_shader_module(wgpu::ShaderModuleDescriptor {
+        label: Some("Shader"),
+        source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(file_as_str)),
+    })
+}
+
 impl State {
 
     async fn new(window: Window) -> Self {
@@ -122,10 +129,7 @@ impl State {
 
         surface.configure(&gpu, &config);
 
-        let shader = gpu.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("Shader"),
-            source: wgpu::ShaderSource::Wgsl(include_str!("shader.wgsl").into()),
-        });
+        let shader = generate_shader_module(&gpu, include_str!("shader.wgsl"));
 
         let render_pipeline_layout = gpu.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Render Pipeline Layout"),
