@@ -96,7 +96,7 @@ impl State {
 
         let gpu_adapter = Self::generate_gpu_adapter(&gpu_handle, &surface).await;
 
-        let (gpu, queue) = gpu_adapter.request_device(
+        let (gpu, gpu_work_queue) = gpu_adapter.request_device(
             &wgpu::DeviceDescriptor {
                 features: wgpu::Features::empty(),
                 limits: get_device_limitations(),
@@ -184,7 +184,7 @@ impl State {
             window,
             surface,
             device: gpu,
-            queue,
+            queue: gpu_work_queue,
             config,
             size,
             render_pipeline,
