@@ -64,61 +64,61 @@ fn get_device_limitations() -> wgpu::Limits {
     return wgpu::Limits::default();
 }
 
-impl State {
-    
-    fn get_wgpu_instance() -> wgpu::Instance {
+fn get_wgpu_instance() -> wgpu::Instance {
         wgpu::Instance::new(wgpu::Backends::all())
-    }
+}
 
-    fn create_gpu_context(window: &Window, gpu_handle: &wgpu::Instance) -> wgpu::Surface {
-        unsafe { 
-            gpu_handle.create_surface(window) 
-        }
+fn create_gpu_context(window: &Window, gpu_handle: &wgpu::Instance) -> wgpu::Surface {
+    unsafe { 
+        gpu_handle.create_surface(window) 
     }
+}
 
-    async fn generate_gpu_adapter(gpu_handle: &wgpu::Instance, surface: &wgpu::Surface) -> wgpu::Adapter {
-        gpu_handle.request_adapter(
-            &wgpu::RequestAdapterOptions {
-                power_preference: wgpu::PowerPreference::default(),
-                compatible_surface: Some(surface),
-                force_fallback_adapter: false,
-            },
-        ).await.unwrap()
-    }
+async fn generate_gpu_adapter(gpu_handle: &wgpu::Instance, surface: &wgpu::Surface) -> wgpu::Adapter {
+    gpu_handle.request_adapter(
+        &wgpu::RequestAdapterOptions {
+            power_preference: wgpu::PowerPreference::default(),
+            compatible_surface: Some(surface),
+            force_fallback_adapter: false,
+        },
+    ).await.unwrap()
+}
 
-    async fn get_gpu_handle(gpu_adapter: &wgpu::Adapter) -> (wgpu::Device, wgpu::Queue) {
-        gpu_adapter.request_device(
-            &wgpu::DeviceDescriptor {
-                features: wgpu::Features::empty(),
-                limits: get_device_limitations(),
-                label: None,
-            },
-            None
-        ).await.unwrap()
-    }
+async fn get_gpu_handle(gpu_adapter: &wgpu::Adapter) -> (wgpu::Device, wgpu::Queue) {
+    gpu_adapter.request_device(
+        &wgpu::DeviceDescriptor {
+            features: wgpu::Features::empty(),
+            limits: get_device_limitations(),
+            label: None,
+        },
+        None
+    ).await.unwrap()
+}
 
-    fn get_context_configuration(window: &Window, surface: &wgpu::Surface, gpu_adapter: &wgpu::Adapter) -> wgpu::SurfaceConfiguration {
-        wgpu::SurfaceConfiguration {
-            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
-            format: surface.get_supported_formats(&gpu_adapter)[0],
-            width: window.inner_size().width,
-            height: window.inner_size().height,
-            present_mode: wgpu::PresentMode::Fifo,
-            alpha_mode: wgpu::CompositeAlphaMode::Auto,
-        }
+fn get_context_configuration(window: &Window, surface: &wgpu::Surface, gpu_adapter: &wgpu::Adapter) -> wgpu::SurfaceConfiguration {
+    wgpu::SurfaceConfiguration {
+        usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+        format: surface.get_supported_formats(&gpu_adapter)[0],
+        width: window.inner_size().width,
+        height: window.inner_size().height,
+        present_mode: wgpu::PresentMode::Fifo,
+        alpha_mode: wgpu::CompositeAlphaMode::Auto,
     }
+}
+
+impl State {
 
     async fn new(window: Window) -> Self {
 
-        let wgpu_handle = Self::get_wgpu_instance();
+        let wgpu_handle = get_wgpu_instance();
         
-        let surface = Self::create_gpu_context(&window, &wgpu_handle);
+        let surface = create_gpu_context(&window, &wgpu_handle);
 
-        let gpu_adapter = Self::generate_gpu_adapter(&wgpu_handle, &surface).await;
+        let gpu_adapter = generate_gpu_adapter(&wgpu_handle, &surface).await;
 
-        let (gpu, gpu_work_queue) = Self::get_gpu_handle(&gpu_adapter).await;
+        let (gpu, gpu_work_queue) = get_gpu_handle(&gpu_adapter).await;
 
-        let config = Self::get_context_configuration(&window, &surface, &gpu_adapter);
+        let config = get_context_configuration(&window, &surface, &gpu_adapter);
 
         surface.configure(&gpu, &config);
 
