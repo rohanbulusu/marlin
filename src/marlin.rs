@@ -161,6 +161,16 @@ fn generate_render_pipeline(gpu: &wgpu::Device, layout: &wgpu::PipelineLayout, c
     })
 }
 
+fn create_vertex_buffer(gpu: &wgpu::Device, buf_name: &str, vertices: &[Vertex]) -> wgpu::Buffer {
+    gpu.create_buffer_init(
+        &wgpu::util::BufferInitDescriptor {
+            label: Some(buf_name),
+            contents: bytemuck::cast_slice(vertices),
+            usage: wgpu::BufferUsages::VERTEX,
+        }
+    )
+}
+
 impl State {
 
     async fn new(window: Window) -> Self {
@@ -183,13 +193,7 @@ impl State {
 
         let render_pipeline = generate_render_pipeline(&gpu, &render_pipeline_layout, &config, &shader);
 
-        let vertex_buffer = gpu.create_buffer_init(
-            &wgpu::util::BufferInitDescriptor {
-                label: Some("Vertex Buffer"),
-                contents: bytemuck::cast_slice(VERTICES),
-                usage: wgpu::BufferUsages::VERTEX,
-            }
-        );
+        let vertex_buffer = create_vertex_buffer(&gpu, "Vertex Buffer", VERTICES);
 
         let index_buffer = gpu.create_buffer_init(
             &wgpu::util::BufferInitDescriptor {
