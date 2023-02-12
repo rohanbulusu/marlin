@@ -50,7 +50,6 @@ struct State {
     device: wgpu::Device,
     queue: wgpu::Queue,
     config: wgpu::SurfaceConfiguration,
-    size: winit::dpi::PhysicalSize<u32>,
     window: Window,
     render_pipeline: wgpu::RenderPipeline,
     vertex_buffer: wgpu::Buffer,
@@ -67,7 +66,7 @@ fn get_device_limitations() -> wgpu::Limits {
 
 impl State {
     
-    fn generate_gpu_handle() -> wgpu::Instance {
+    fn get_wgpu_instance() -> wgpu::Instance {
         wgpu::Instance::new(wgpu::Backends::all())
     }
 
@@ -87,32 +86,40 @@ impl State {
         ).await.unwrap()
     }
 
-    async fn new(window: Window) -> Self {
-        let size = window.inner_size();
-
-        let gpu_handle = Self::generate_gpu_handle();
-        
-        let surface = Self::create_gpu_context(&window, &gpu_handle);
-
-        let gpu_adapter = Self::generate_gpu_adapter(&gpu_handle, &surface).await;
-
-        let (gpu, gpu_work_queue) = gpu_adapter.request_device(
+    async fn get_gpu_handle(gpu_adapter: &wgpu::Adapter) -> (wgpu::Device, wgpu::Queue) {
+        gpu_adapter.request_device(
             &wgpu::DeviceDescriptor {
                 features: wgpu::Features::empty(),
                 limits: get_device_limitations(),
                 label: None,
             },
             None
-        ).await.unwrap();
+        ).await.unwrap()
+    }
 
-        let config = wgpu::SurfaceConfiguration {
+    fn get_context_configuration(window: &Window, surface: &wgpu::Surface, gpu_adapter: &wgpu::Adapter) -> wgpu::SurfaceConfiguration {
+        wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format: surface.get_supported_formats(&gpu_adapter)[0],
-            width: size.width,
-            height: size.height,
+            width: window.inner_size().width,
+            height: window.inner_size().height,
             present_mode: wgpu::PresentMode::Fifo,
             alpha_mode: wgpu::CompositeAlphaMode::Auto,
-        };
+        }
+    }
+
+    async fn new(window: Window) -> Self {
+
+        let wgpu_handle = Self::get_wgpu_instance();
+        
+        let surface = Self::create_gpu_context(&window, &wgpu_handle);
+
+        let gpu_adapter = Self::generate_gpu_adapter(&wgpu_handle, &surface).await;
+
+        let (gpu, gpu_work_queue) = Self::get_gpu_handle(&gpu_adapter).await;
+
+        let config = Self::get_context_configuration(&window, &surface, &gpu_adapter);
+
         surface.configure(&gpu, &config);
 
         let shader = gpu.create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -186,7 +193,6 @@ impl State {
             device: gpu,
             queue: gpu_work_queue,
             config,
-            size,
             render_pipeline,
             vertex_buffer,
             index_buffer
@@ -199,7 +205,6 @@ impl State {
 
     pub fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
         if new_size.width > 0 && new_size.height > 0 {
-            self.size = new_size;
             self.config.width = new_size.width;
             self.config.height = new_size.height;
             self.surface.configure(&self.device, &self.config);
@@ -273,7 +278,7 @@ pub async fn run() {
                 match state.render() {
                     Ok(_) => {}
                     // Reconfigure the surface if lost
-                    Err(wgpu::SurfaceError::Lost) => state.resize(state.size),
+                    Err(wgpu::SurfaceError::Lost) => state.resize(state.window.inner_size()),
                     // The system is out of memory, we should probably quit
                     Err(wgpu::SurfaceError::OutOfMemory) => *control_flow = ControlFlow::Exit,
                     // All other errors (Outdated, Timeout) should be resolved by the next frame
