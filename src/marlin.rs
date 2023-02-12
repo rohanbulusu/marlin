@@ -92,12 +92,11 @@ impl State {
 
         let gpu_handle = Self::generate_gpu_handle();
         
-        // The surface needs to live as long as the window that created it.
         let surface = Self::create_gpu_context(&window, &gpu_handle);
 
-        let gpu = Self::generate_gpu_adapter(&gpu_handle, &surface).await;
+        let gpu_adapter = Self::generate_gpu_adapter(&gpu_handle, &surface).await;
 
-        let (device, queue) = gpu.request_device(
+        let (device, queue) = gpu_adapter.request_device(
             &wgpu::DeviceDescriptor {
                 features: wgpu::Features::empty(),
                 limits: get_device_limitations(),
@@ -108,7 +107,7 @@ impl State {
 
         let config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
-            format: surface.get_supported_formats(&gpu)[0],
+            format: surface.get_supported_formats(&gpu_adapter)[0],
             width: size.width,
             height: size.height,
             present_mode: wgpu::PresentMode::Fifo,
