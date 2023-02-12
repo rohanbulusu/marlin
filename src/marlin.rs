@@ -96,13 +96,13 @@ impl State {
 
         let gpu_adapter = Self::generate_gpu_adapter(&gpu_handle, &surface).await;
 
-        let (device, queue) = gpu_adapter.request_device(
+        let (gpu, queue) = gpu_adapter.request_device(
             &wgpu::DeviceDescriptor {
                 features: wgpu::Features::empty(),
                 limits: get_device_limitations(),
                 label: None,
             },
-            None, // Trace path
+            None
         ).await.unwrap();
 
         let config = wgpu::SurfaceConfiguration {
@@ -113,20 +113,20 @@ impl State {
             present_mode: wgpu::PresentMode::Fifo,
             alpha_mode: wgpu::CompositeAlphaMode::Auto,
         };
-        surface.configure(&device, &config);
+        surface.configure(&gpu, &config);
 
-        let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+        let shader = gpu.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Shader"),
             source: wgpu::ShaderSource::Wgsl(include_str!("shader.wgsl").into()),
         });
 
-        let render_pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+        let render_pipeline_layout = gpu.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Render Pipeline Layout"),
             bind_group_layouts: &[],
             push_constant_ranges: &[],
         });
 
-        let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        let render_pipeline = gpu.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("Render Pipeline"),
             layout: Some(&render_pipeline_layout),
             vertex: wgpu::VertexState {
@@ -164,7 +164,7 @@ impl State {
             multiview: None, // 5.
         });
 
-        let vertex_buffer = device.create_buffer_init(
+        let vertex_buffer = gpu.create_buffer_init(
             &wgpu::util::BufferInitDescriptor {
                 label: Some("Vertex Buffer"),
                 contents: bytemuck::cast_slice(VERTICES),
@@ -172,7 +172,7 @@ impl State {
             }
         );
 
-        let index_buffer = device.create_buffer_init(
+        let index_buffer = gpu.create_buffer_init(
             &wgpu::util::BufferInitDescriptor {
                 label: Some("Index Buffer"),
                 contents: bytemuck::cast_slice(INDICES),
@@ -183,7 +183,7 @@ impl State {
         Self {
             window,
             surface,
-            device,
+            device: gpu,
             queue,
             config,
             size,
