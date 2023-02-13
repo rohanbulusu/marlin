@@ -221,6 +221,10 @@ impl State {
         self.vertex_buffer = create_vertex_buffer(&self.device, "Vertex Buffer", vertices)
     }
 
+    pub fn update_index_buffer(&mut self, indices: &[u32]) {
+        self.index_buffer = create_index_buffer(&self.device, "Index Buffer", indices)
+    }
+
     pub fn window(&self) -> &Window {
         &self.window
     }
