@@ -246,8 +246,8 @@ impl State {
     }
 
     fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
-        let output = self.surface.get_current_texture()?;
-        let view = output.texture.create_view(&wgpu::TextureViewDescriptor::default());
+        let render_surface = self.surface.get_current_texture()?;
+        let view = render_surface.texture.create_view(&wgpu::TextureViewDescriptor::default());
         let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("Render Encoder"),
         });
@@ -279,7 +279,7 @@ impl State {
 
         // submit will accept anything that implements IntoIter
         self.queue.submit(std::iter::once(encoder.finish()));
-        output.present();
+        render_surface.present();
 
         Ok(())
     }
