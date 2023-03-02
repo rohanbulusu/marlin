@@ -1,13 +1,12 @@
-
 use winit::{
     event::*,
     event_loop::{ControlFlow, EventLoop},
     window::WindowBuilder,
 };
 
-use winit::window::Window;
-use wgpu::util::DeviceExt;
 use std::iter::once;
+use wgpu::util::DeviceExt;
+use winit::window::Window;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -17,43 +16,40 @@ pub struct Vertex {
 }
 
 impl Vertex {
-
     pub fn new(x: f32, y: f32, z: f32, color: [f32; 3]) -> Self {
         Self {
             position: [x, y, z],
-            color
+            color,
         }
     }
 
     fn desc<'a>() -> wgpu::VertexBufferLayout<'a> {
         wgpu::VertexBufferLayout {
             array_stride: std::mem::size_of::<Vertex>() as wgpu::BufferAddress, // 1.
-            step_mode: wgpu::VertexStepMode::Vertex, // 2.
-            attributes: &[ // 3.
+            step_mode: wgpu::VertexStepMode::Vertex,                            // 2.
+            attributes: &[
+                // 3.
                 wgpu::VertexAttribute {
-                    offset: 0, // 4.
-                    shader_location: 0, // 5.
+                    offset: 0,                             // 4.
+                    shader_location: 0,                    // 5.
                     format: wgpu::VertexFormat::Float32x3, // 6.
                 },
                 wgpu::VertexAttribute {
                     offset: std::mem::size_of::<[f32; 3]>() as wgpu::BufferAddress,
                     shader_location: 1,
                     format: wgpu::VertexFormat::Float32x3,
-                }
-            ]
+                },
+            ],
         }
-
     }
 }
 
-
 pub struct Entity {
     points: Vec<Vertex>,
-    point_order: Vec<u32>
+    point_order: Vec<u32>,
 }
 
 impl Entity {
-
     pub fn from_points(points: Vec<Vertex>) -> Self {
         let mut order: Vec<u32> = vec![];
         for (i, _) in points.iter().enumerate() {
@@ -61,21 +57,10 @@ impl Entity {
         }
         Self {
             points,
-            point_order: order
+            point_order: order,
         }
     }
-
 }
-
-
-
-
-
-
-
-
-
-
 
 struct State {
     surface: wgpu::Surface,
@@ -95,37 +80,46 @@ fn get_device_limitations() -> wgpu::Limits {
 }
 
 fn get_wgpu_instance() -> wgpu::Instance {
-        wgpu::Instance::new(wgpu::Backends::all())
+    wgpu::Instance::new(wgpu::Backends::all())
 }
 
 fn create_gpu_context(window: &Window, gpu_handle: &wgpu::Instance) -> wgpu::Surface {
-    unsafe { 
-        gpu_handle.create_surface(window) 
-    }
+    unsafe { gpu_handle.create_surface(window) }
 }
 
-async fn generate_gpu_adapter(gpu_handle: &wgpu::Instance, surface: &wgpu::Surface) -> wgpu::Adapter {
-    gpu_handle.request_adapter(
-        &wgpu::RequestAdapterOptions {
+async fn generate_gpu_adapter(
+    gpu_handle: &wgpu::Instance,
+    surface: &wgpu::Surface,
+) -> wgpu::Adapter {
+    gpu_handle
+        .request_adapter(&wgpu::RequestAdapterOptions {
             power_preference: wgpu::PowerPreference::default(),
             compatible_surface: Some(surface),
             force_fallback_adapter: false,
-        },
-    ).await.unwrap()
+        })
+        .await
+        .unwrap()
 }
 
 async fn get_gpu_handle(gpu_adapter: &wgpu::Adapter) -> (wgpu::Device, wgpu::Queue) {
-    gpu_adapter.request_device(
-        &wgpu::DeviceDescriptor {
-            features: wgpu::Features::empty(),
-            limits: get_device_limitations(),
-            label: None,
-        },
-        None
-    ).await.unwrap()
+    gpu_adapter
+        .request_device(
+            &wgpu::DeviceDescriptor {
+                features: wgpu::Features::empty(),
+                limits: get_device_limitations(),
+                label: None,
+            },
+            None,
+        )
+        .await
+        .unwrap()
 }
 
-fn get_context_configuration(window: &Window, surface: &wgpu::Surface, gpu_adapter: &wgpu::Adapter) -> wgpu::SurfaceConfiguration {
+fn get_context_configuration(
+    window: &Window,
+    surface: &wgpu::Surface,
+    gpu_adapter: &wgpu::Adapter,
+) -> wgpu::SurfaceConfiguration {
     wgpu::SurfaceConfiguration {
         usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
         format: surface.get_supported_formats(&gpu_adapter)[0],
@@ -151,8 +145,11 @@ fn generate_render_pipeline_layout(gpu: &wgpu::Device) -> wgpu::PipelineLayout {
     })
 }
 
-fn generate_render_pipeline(gpu: &wgpu::Device, config: &wgpu::SurfaceConfiguration, shader: &wgpu::ShaderModule) -> wgpu::RenderPipeline {
-    
+fn generate_render_pipeline(
+    gpu: &wgpu::Device,
+    config: &wgpu::SurfaceConfiguration,
+    shader: &wgpu::ShaderModule,
+) -> wgpu::RenderPipeline {
     let layout = &generate_render_pipeline_layout(gpu);
 
     gpu.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -187,37 +184,30 @@ fn generate_render_pipeline(gpu: &wgpu::Device, config: &wgpu::SurfaceConfigurat
             mask: !0,
             alpha_to_coverage_enabled: false,
         },
-        multiview: None
+        multiview: None,
     })
 }
 
 fn create_vertex_buffer(gpu: &wgpu::Device, buf_name: &str, vertices: &[Vertex]) -> wgpu::Buffer {
-    gpu.create_buffer_init(
-        &wgpu::util::BufferInitDescriptor {
-            label: Some(buf_name),
-            contents: bytemuck::cast_slice(vertices),
-            usage: wgpu::BufferUsages::VERTEX,
-        }
-    )
+    gpu.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some(buf_name),
+        contents: bytemuck::cast_slice(vertices),
+        usage: wgpu::BufferUsages::VERTEX,
+    })
 }
 
 fn create_index_buffer(gpu: &wgpu::Device, buf_name: &str, indices: &[u32]) -> wgpu::Buffer {
-    gpu.create_buffer_init(
-        &wgpu::util::BufferInitDescriptor {
-            label: Some(buf_name),
-            contents: bytemuck::cast_slice(indices),
-            usage: wgpu::BufferUsages::INDEX,
-        }
-    )
+    gpu.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some(buf_name),
+        contents: bytemuck::cast_slice(indices),
+        usage: wgpu::BufferUsages::INDEX,
+    })
 }
 
-
 impl State {
-
     async fn new(window: Window) -> Self {
-
         let wgpu_handle = get_wgpu_instance();
-        
+
         let surface = create_gpu_context(&window, &wgpu_handle);
 
         let gpu_adapter = generate_gpu_adapter(&wgpu_handle, &surface).await;
@@ -238,7 +228,7 @@ impl State {
             device: gpu,
             queue: gpu_work_queue,
             config,
-            render_pipeline
+            render_pipeline,
         }
     }
 
@@ -258,19 +248,23 @@ impl State {
         false
     }
 
-    fn update(&mut self) {
-        
-    }
+    fn update(&mut self) {}
 
     fn render(&mut self, entity: &Entity) -> Result<(), wgpu::SurfaceError> {
         let render_surface = self.surface.get_current_texture()?;
-        let view = render_surface.texture.create_view(&wgpu::TextureViewDescriptor::default());
-        let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Render Encoder"),
-        });
+        let view = render_surface
+            .texture
+            .create_view(&wgpu::TextureViewDescriptor::default());
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Render Encoder"),
+            });
 
-        let vertex_buffer = create_vertex_buffer(&self.device, "Entity Vertex Buffer", &entity.points[..]);
-        let index_buffer = create_index_buffer(&self.device, "Entity Index Buffer", &entity.point_order[..]);
+        let vertex_buffer =
+            create_vertex_buffer(&self.device, "Entity Vertex Buffer", &entity.points[..]);
+        let index_buffer =
+            create_index_buffer(&self.device, "Entity Index Buffer", &entity.point_order[..]);
 
         {
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -292,13 +286,12 @@ impl State {
             });
 
             render_pass.set_pipeline(&self.render_pipeline); // 2.
-            // render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
+                                                             // render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
 
             render_pass.set_vertex_buffer(0, vertex_buffer.slice(..));
             render_pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
             //render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
             render_pass.draw(0..(entity.points.len() as u32), 0..1);
-            
         }
 
         // submit will accept anything that implements IntoIter
@@ -312,7 +305,6 @@ impl State {
 pub fn to_srgb(rgb: f64) -> f64 {
     ((rgb / 255.0 + 0.055) / 1.055).powf(2.4)
 }
-
 
 pub async fn run(entities: Vec<Entity>) {
     env_logger::init();
@@ -341,29 +333,32 @@ pub async fn run(entities: Vec<Entity>) {
                 // RedrawRequested will only trigger once, unless we manually
                 // request it.
                 state.window().request_redraw();
-            },
+            }
             Event::WindowEvent {
                 ref event,
                 window_id,
-            } if window_id == state.window().id() => if !state.input(event) { // UPDATED!
-                match event {
-                    WindowEvent::CloseRequested
-                    | WindowEvent::KeyboardInput {
-                        input:
-                            KeyboardInput {
-                                state: ElementState::Pressed,
-                                virtual_keycode: Some(VirtualKeyCode::Escape),
-                                ..
-                            },
-                        ..
-                    } => *control_flow = ControlFlow::Exit,
-                    WindowEvent::Resized(physical_size) => {
-                        state.resize(*physical_size);
+            } if window_id == state.window().id() => {
+                if !state.input(event) {
+                    // UPDATED!
+                    match event {
+                        WindowEvent::CloseRequested
+                        | WindowEvent::KeyboardInput {
+                            input:
+                                KeyboardInput {
+                                    state: ElementState::Pressed,
+                                    virtual_keycode: Some(VirtualKeyCode::Escape),
+                                    ..
+                                },
+                            ..
+                        } => *control_flow = ControlFlow::Exit,
+                        WindowEvent::Resized(physical_size) => {
+                            state.resize(*physical_size);
+                        }
+                        WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
+                            state.resize(**new_inner_size);
+                        }
+                        _ => {}
                     }
-                    WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
-                        state.resize(**new_inner_size);
-                    }
-                    _ => {}
                 }
             }
 
