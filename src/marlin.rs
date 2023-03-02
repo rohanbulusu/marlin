@@ -62,7 +62,7 @@ impl Entity {
     }
 }
 
-struct State {
+struct WindowState {
     surface: wgpu::Surface,
     device: wgpu::Device,
     queue: wgpu::Queue,
@@ -205,7 +205,7 @@ fn create_index_buffer(gpu: &wgpu::Device, buf_name: &str, indices: &[u32]) -> w
     })
 }
 
-impl State {
+impl WindowState {
     async fn new(window: Window) -> Self {
         let wgpu_handle = get_wgpu_instance();
 
@@ -317,7 +317,7 @@ pub async fn run() {
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new().build(&event_loop).unwrap();
 
-    let mut state = State::new(window).await;
+    let mut state = WindowState::new(window).await;
 
     let tri = Entity::from_points(vec![
         Vertex::new(0.0, 0.5, 0.0, [1.0, 0.0, 0.0]),
