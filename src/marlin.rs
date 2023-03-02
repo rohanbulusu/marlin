@@ -7,15 +7,24 @@ use winit::{
 
 use winit::window::Window;
 use wgpu::util::DeviceExt;
+use std::iter::once;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
-struct Vertex {
+pub struct Vertex {
     position: [f32; 3],
     color: [f32; 3],
 }
 
 impl Vertex {
+
+    pub fn new(x: f32, y: f32, z: f32, color: [f32; 3]) -> Self {
+        Self {
+            position: [x, y, z],
+            color
+        }
+    }
+
     fn desc<'a>() -> wgpu::VertexBufferLayout<'a> {
         wgpu::VertexBufferLayout {
             array_stride: std::mem::size_of::<Vertex>() as wgpu::BufferAddress, // 1.
@@ -37,13 +46,36 @@ impl Vertex {
     }
 }
 
-const VERTICES: &[Vertex] = &[
-    Vertex { position: [0.0, 0.5, 0.0], color: [1.0, 0.0, 0.0] },
-    Vertex { position: [-0.5, -0.5, 0.0], color: [0.0, 1.0, 0.0] },
-    Vertex { position: [0.5, -0.5, 0.0], color: [0.0, 0.0, 1.0] },
-];
 
-const INDICES: &[u32] = &[1, 2, 3]; 
+pub struct Entity {
+    points: Vec<Vertex>,
+    point_order: Vec<u32>
+}
+
+impl Entity {
+
+    pub fn from_points(points: Vec<Vertex>) -> Self {
+        let mut order: Vec<u32> = vec![];
+        for (i, _) in points.iter().enumerate() {
+            order.push(i as u32);
+        }
+        Self {
+            points,
+            point_order: order
+        }
+    }
+
+}
+
+
+
+
+
+
+
+
+
+
 
 struct State {
     surface: wgpu::Surface,
@@ -52,8 +84,6 @@ struct State {
     config: wgpu::SurfaceConfiguration,
     window: Window,
     render_pipeline: wgpu::RenderPipeline,
-    vertex_buffer: wgpu::Buffer,
-    index_buffer: wgpu::Buffer
 }
 
 fn get_device_limitations() -> wgpu::Limits {
@@ -181,6 +211,7 @@ fn create_index_buffer(gpu: &wgpu::Device, buf_name: &str, indices: &[u32]) -> w
     )
 }
 
+
 impl State {
 
     async fn new(window: Window) -> Self {
@@ -201,28 +232,14 @@ impl State {
 
         let render_pipeline = generate_render_pipeline(&gpu, &config, &shader);
 
-        let vertex_buffer = create_vertex_buffer(&gpu, "Vertex Buffer", VERTICES);
-
-        let index_buffer = create_index_buffer(&gpu, "Index Buffer", INDICES);
-
         Self {
             window,
             surface,
             device: gpu,
             queue: gpu_work_queue,
             config,
-            render_pipeline,
-            vertex_buffer,
-            index_buffer
+            render_pipeline
         }
-    }
-
-    pub fn update_vertex_buffer(&mut self, vertices: &[Vertex]) {
-        self.vertex_buffer = create_vertex_buffer(&self.device, "Vertex Buffer", vertices)
-    }
-
-    pub fn update_index_buffer(&mut self, indices: &[u32]) {
-        self.index_buffer = create_index_buffer(&self.device, "Index Buffer", indices)
     }
 
     pub fn window(&self) -> &Window {
@@ -245,12 +262,16 @@ impl State {
         
     }
 
-    fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
+    fn render(&mut self, entity: &Entity) -> Result<(), wgpu::SurfaceError> {
         let render_surface = self.surface.get_current_texture()?;
         let view = render_surface.texture.create_view(&wgpu::TextureViewDescriptor::default());
         let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("Render Encoder"),
         });
+
+        let vertex_buffer = create_vertex_buffer(&self.device, "Entity Vertex Buffer", &entity.points[..]);
+        let index_buffer = create_index_buffer(&self.device, "Entity Index Buffer", &entity.point_order[..]);
+
         {
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("Render Pass"),
@@ -271,14 +292,17 @@ impl State {
             });
 
             render_pass.set_pipeline(&self.render_pipeline); // 2.
-            render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-            render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
-            render_pass.draw(0..3, 0..1);
-            render_pass.draw(0..(VERTICES.len() as u32), 0..1); // 3.
+            // render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
+
+            render_pass.set_vertex_buffer(0, vertex_buffer.slice(..));
+            render_pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+            //render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+            render_pass.draw(0..(entity.points.len() as u32), 0..1);
+            
         }
 
         // submit will accept anything that implements IntoIter
-        self.queue.submit(std::iter::once(encoder.finish()));
+        self.queue.submit(once(encoder.finish()));
         render_surface.present();
 
         Ok(())
@@ -290,7 +314,7 @@ pub fn to_srgb(rgb: f64) -> f64 {
 }
 
 
-pub async fn run() {
+pub async fn run(entities: Vec<Entity>) {
     env_logger::init();
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new().build(&event_loop).unwrap();
@@ -301,14 +325,16 @@ pub async fn run() {
         match event {
             Event::RedrawRequested(window_id) if window_id == state.window().id() => {
                 state.update();
-                match state.render() {
-                    Ok(_) => {}
-                    // Reconfigure the surface if lost
-                    Err(wgpu::SurfaceError::Lost) => state.resize(state.window.inner_size()),
-                    // The system is out of memory, we should probably quit
-                    Err(wgpu::SurfaceError::OutOfMemory) => *control_flow = ControlFlow::Exit,
-                    // All other errors (Outdated, Timeout) should be resolved by the next frame
-                    Err(e) => eprintln!("{:?}", e),
+                for entity in &entities {
+                    match state.render(entity) {
+                        Ok(_) => {}
+                        // Reconfigure the surface if lost
+                        Err(wgpu::SurfaceError::Lost) => state.resize(state.window.inner_size()),
+                        // The system is out of memory, we should probably quit
+                        Err(wgpu::SurfaceError::OutOfMemory) => *control_flow = ControlFlow::Exit,
+                        // All other errors (Outdated, Timeout) should be resolved by the next frame
+                        Err(e) => eprintln!("{:?}", e),
+                    }
                 }
             }
             Event::MainEventsCleared => {
