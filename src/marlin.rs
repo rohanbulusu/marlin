@@ -69,6 +69,7 @@ struct State {
     config: wgpu::SurfaceConfiguration,
     window: Window,
     render_pipeline: wgpu::RenderPipeline,
+    entities: Vec<Entity>,
 }
 
 fn get_device_limitations() -> wgpu::Limits {
@@ -76,7 +77,7 @@ fn get_device_limitations() -> wgpu::Limits {
     if cfg!(target_arch = "wasm32") {
         return wgpu::Limits::downlevel_webgl2_defaults();
     }
-    return wgpu::Limits::default();
+    wgpu::Limits::default()
 }
 
 fn get_wgpu_instance() -> wgpu::Instance {
@@ -122,7 +123,7 @@ fn get_context_configuration(
 ) -> wgpu::SurfaceConfiguration {
     wgpu::SurfaceConfiguration {
         usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
-        format: surface.get_supported_formats(&gpu_adapter)[0],
+        format: surface.get_supported_formats(gpu_adapter)[0],
         width: window.inner_size().width,
         height: window.inner_size().height,
         present_mode: wgpu::PresentMode::Fifo,
@@ -161,7 +162,7 @@ fn generate_render_pipeline(
             buffers: &[Vertex::desc()],
         },
         fragment: Some(wgpu::FragmentState {
-            module: &shader,
+            module: shader,
             entry_point: "frag_main",
             targets: &[Some(wgpu::ColorTargetState {
                 format: config.format,
@@ -229,7 +230,12 @@ impl State {
             queue: gpu_work_queue,
             config,
             render_pipeline,
+            entities: vec![],
         }
+    }
+
+    pub fn add_entity(&mut self, entity: Entity) {
+        self.entities.push(entity);
     }
 
     pub fn window(&self) -> &Window {
@@ -248,9 +254,9 @@ impl State {
         false
     }
 
-    fn update(&mut self) {}
+    fn update(&self) {}
 
-    fn render(&mut self, entity: &Entity) -> Result<(), wgpu::SurfaceError> {
+    fn render(&self, entity: &Entity) -> Result<(), wgpu::SurfaceError> {
         let render_surface = self.surface.get_current_texture()?;
         let view = render_surface
             .texture
@@ -306,22 +312,30 @@ pub fn to_srgb(rgb: f64) -> f64 {
     ((rgb / 255.0 + 0.055) / 1.055).powf(2.4)
 }
 
-pub async fn run(entities: Vec<Entity>) {
+pub async fn run() {
     env_logger::init();
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new().build(&event_loop).unwrap();
 
     let mut state = State::new(window).await;
 
+    let tri = Entity::from_points(vec![
+        Vertex::new(0.0, 0.5, 0.0, [1.0, 0.0, 0.0]),
+        Vertex::new(-0.5, -0.5, 0.0, [0.0, 1.0, 0.0]),
+        Vertex::new(0.5, -0.5, 0.0, [0.0, 0.0, 1.0]),
+    ]);
+
+    state.add_entity(tri);
+
     event_loop.run(move |event, _, control_flow| {
         match event {
             Event::RedrawRequested(window_id) if window_id == state.window().id() => {
                 state.update();
-                for entity in &entities {
+                for entity in &state.entities {
                     match state.render(entity) {
                         Ok(_) => {}
-                        // Reconfigure the surface if lost
-                        Err(wgpu::SurfaceError::Lost) => state.resize(state.window.inner_size()),
+                        // Exit if the surface is lost
+                        Err(wgpu::SurfaceError::Lost) => *control_flow = ControlFlow::Exit,
                         // The system is out of memory, we should probably quit
                         Err(wgpu::SurfaceError::OutOfMemory) => *control_flow = ControlFlow::Exit,
                         // All other errors (Outdated, Timeout) should be resolved by the next frame
