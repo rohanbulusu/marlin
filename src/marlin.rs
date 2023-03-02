@@ -69,7 +69,6 @@ struct WindowState {
     config: wgpu::SurfaceConfiguration,
     window: Window,
     render_pipeline: wgpu::RenderPipeline,
-    entities: Vec<Entity>,
 }
 
 fn get_device_limitations() -> wgpu::Limits {
@@ -230,12 +229,7 @@ impl WindowState {
             queue: gpu_work_queue,
             config,
             render_pipeline,
-            entities: vec![],
         }
-    }
-
-    pub fn add_entity(&mut self, entity: Entity) {
-        self.entities.push(entity);
     }
 
     pub fn window(&self) -> &Window {
@@ -312,71 +306,88 @@ pub fn to_srgb(rgb: f64) -> f64 {
     ((rgb / 255.0 + 0.055) / 1.055).powf(2.4)
 }
 
-pub async fn run() {
-    env_logger::init();
-    let event_loop = EventLoop::new();
-    let window = WindowBuilder::new().build(&event_loop).unwrap();
+pub struct Marlin {
+    state: WindowState,
+    event_loop: EventLoop<()>,
+    entities: Vec<Entity>
+}
 
-    let mut state = WindowState::new(window).await;
+impl Marlin {
 
-    let tri = Entity::from_points(vec![
-        Vertex::new(0.0, 0.5, 0.0, [1.0, 0.0, 0.0]),
-        Vertex::new(-0.5, -0.5, 0.0, [0.0, 1.0, 0.0]),
-        Vertex::new(0.5, -0.5, 0.0, [0.0, 0.0, 1.0]),
-    ]);
 
-    state.add_entity(tri);
+    pub async fn new() -> Self {
+        let event_loop = EventLoop::new();
+        let window = WindowBuilder::new().build(&event_loop).unwrap();
 
-    event_loop.run(move |event, _, control_flow| {
-        match event {
-            Event::RedrawRequested(window_id) if window_id == state.window().id() => {
-                state.update();
-                for entity in &state.entities {
-                    match state.render(entity) {
-                        Ok(_) => {}
-                        // Exit if the surface is lost
-                        Err(wgpu::SurfaceError::Lost) => *control_flow = ControlFlow::Exit,
-                        // The system is out of memory, we should probably quit
-                        Err(wgpu::SurfaceError::OutOfMemory) => *control_flow = ControlFlow::Exit,
-                        // All other errors (Outdated, Timeout) should be resolved by the next frame
-                        Err(e) => eprintln!("{:?}", e),
-                    }
-                }
-            }
-            Event::MainEventsCleared => {
-                // RedrawRequested will only trigger once, unless we manually
-                // request it.
-                state.window().request_redraw();
-            }
-            Event::WindowEvent {
-                ref event,
-                window_id,
-            } if window_id == state.window().id() => {
-                if !state.input(event) {
-                    // UPDATED!
-                    match event {
-                        WindowEvent::CloseRequested
-                        | WindowEvent::KeyboardInput {
-                            input:
-                                KeyboardInput {
-                                    state: ElementState::Pressed,
-                                    virtual_keycode: Some(VirtualKeyCode::Escape),
-                                    ..
-                                },
-                            ..
-                        } => *control_flow = ControlFlow::Exit,
-                        WindowEvent::Resized(physical_size) => {
-                            state.resize(*physical_size);
-                        }
-                        WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
-                            state.resize(**new_inner_size);
-                        }
-                        _ => {}
-                    }
-                }
-            }
-
-            _ => {}
+        Self {
+            state: WindowState::new(window).await,
+            event_loop,
+            entities: vec![]
         }
-    });
+    }
+
+    pub fn add_entity(&mut self, entity: Entity) {
+        self.entities.push(entity);
+    }
+
+    pub async fn run(mut self) {
+
+        self.event_loop.run(move |event, _, control_flow| {
+            match event {
+                Event::RedrawRequested(window_id) if window_id == self.state.window().id() => {
+                    self.state.update();
+
+                    for entity in &self.entities {
+                        match self.state.render(entity) {
+                            Ok(_) => {}
+                            // Exit if the surface is lost
+                            Err(wgpu::SurfaceError::Lost) => *control_flow = ControlFlow::Exit,
+                            // The system is out of memory, we should probably quit
+                            Err(wgpu::SurfaceError::OutOfMemory) => *control_flow = ControlFlow::Exit,
+                            // All other errors (Outdated, Timeout) should be resolved by the next frame
+                            Err(e) => eprintln!("{:?}", e),
+                        }
+                    }
+                }
+                Event::MainEventsCleared => {
+                    // RedrawRequested will only trigger once, unless we manually
+                    // request it.
+                    self.state.window().request_redraw();
+                }
+                Event::WindowEvent {
+                    ref event,
+                    window_id,
+                } if window_id == self.state.window().id() => {
+                    if !self.state.input(event) {
+                        // UPDATED!
+                        match event {
+                            WindowEvent::CloseRequested
+                            | WindowEvent::KeyboardInput {
+                                input:
+                                    KeyboardInput {
+                                        state: ElementState::Pressed,
+                                        virtual_keycode: Some(VirtualKeyCode::Escape),
+                                        ..
+                                    },
+                                ..
+                            } => *control_flow = ControlFlow::Exit,
+                            WindowEvent::Resized(physical_size) => {
+                                self.state.resize(*physical_size);
+                            }
+                            WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
+                                self.state.resize(**new_inner_size);
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+
+                _ => {}
+            }
+        });
+    }
+
+
+
+
 }
