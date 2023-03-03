@@ -10,22 +10,22 @@ use winit::window::Window;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
-pub struct Vertex {
+pub struct Point {
     position: [f32; 3],
     color: [f32; 3],
 }
 
-impl Vertex {
-    pub fn new(x: f32, y: f32, z: f32, color: [f32; 3]) -> Self {
+impl Point {
+    pub fn new(x: f32, y: f32, color: [f32; 3]) -> Self {
         Self {
-            position: [x, y, z],
+            position: [x, y, 0.0],
             color,
         }
     }
 
     fn desc<'a>() -> wgpu::VertexBufferLayout<'a> {
         wgpu::VertexBufferLayout {
-            array_stride: std::mem::size_of::<Vertex>() as wgpu::BufferAddress, // 1.
+            array_stride: std::mem::size_of::<Point>() as wgpu::BufferAddress, // 1.
             step_mode: wgpu::VertexStepMode::Vertex,                            // 2.
             attributes: &[
                 // 3.
@@ -45,12 +45,12 @@ impl Vertex {
 }
 
 pub struct Entity {
-    points: Vec<Vertex>,
+    points: Vec<Point>,
     point_order: Vec<u32>,
 }
 
 impl Entity {
-    pub fn from_points(points: Vec<Vertex>) -> Self {
+    pub fn from_points(points: Vec<Point>) -> Self {
         let mut order: Vec<u32> = vec![];
         for (i, _) in points.iter().enumerate() {
             order.push(i as u32);
@@ -158,7 +158,7 @@ fn generate_render_pipeline(
         vertex: wgpu::VertexState {
             module: shader,
             entry_point: "vert_main",
-            buffers: &[Vertex::desc()],
+            buffers: &[Point::desc()],
         },
         fragment: Some(wgpu::FragmentState {
             module: shader,
@@ -188,7 +188,7 @@ fn generate_render_pipeline(
     })
 }
 
-fn create_vertex_buffer(gpu: &wgpu::Device, buf_name: &str, vertices: &[Vertex]) -> wgpu::Buffer {
+fn create_vertex_buffer(gpu: &wgpu::Device, buf_name: &str, vertices: &[Point]) -> wgpu::Buffer {
     gpu.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some(buf_name),
         contents: bytemuck::cast_slice(vertices),
