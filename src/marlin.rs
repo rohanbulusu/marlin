@@ -330,6 +330,11 @@ impl Marlin {
         self.entities.push(entity);
     }
 
+    pub fn draw_point(&mut self, x: f32, y: f32, color: [f32; 3]) {
+        let point = Entity::from_points(vec![Point::new(x, y, color)]);
+        self.entities.push(point);
+    }
+
     pub async fn run(mut self) {
 
         self.event_loop.run(move |event, _, control_flow| {
