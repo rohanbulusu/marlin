@@ -1,6 +1,8 @@
 mod marlin;
+mod entity;
 
-use marlin::{Marlin, Entity, Point};
+use marlin::{Marlin};
+use crate::entity::{Entity, Point};
 
 #[tokio::main]
 async fn main() {
@@ -21,6 +23,7 @@ async fn main() {
 
     window.add_entity(tri);
     window.add_entity(weird);
+    window.draw_point(0.5, 0.5, [1.0, 0.5, 0.2]);
 
     window.run().await;
 
