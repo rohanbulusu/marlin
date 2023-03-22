@@ -6,13 +6,14 @@ use marlin::{Marlin, Entity, Point};
 #[tokio::main]
 async fn main() {
 
-    let mut window = Marlin::new().await;
+    let mut window = Marlin::new(400.0, 400.0).await;
     window.state().window().set_title("Marlin");
+    println!("({}, {})", window.state().window().inner_size().width, window.state().window().inner_size().height);
 
     let tri = Entity::from_points(&window, vec![
-        Point::new(100.0, 50.0, [1.0, 0.0, 0.0]),
-        Point::new(50.0, 100.0, [1.0, 0.0, 0.0]),
-        Point::new(0.0, 100.0, [1.0, 0.0, 0.0]),
+        Point::new(200.0, 100.0, [1.0, 0.0, 0.0]),
+        Point::new(100.0, 200.0, [1.0, 0.0, 0.0]),
+        Point::new(0.0, 200.0, [1.0, 0.0, 0.0]),
 
     ]);
 

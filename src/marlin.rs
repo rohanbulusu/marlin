@@ -2,6 +2,7 @@ use winit::{
     event::*,
     event_loop::{ControlFlow, EventLoop},
     window::WindowBuilder,
+    dpi::LogicalSize,
 };
 
 use std::iter::once;
@@ -61,7 +62,8 @@ impl Entity {
 
     fn normalize_points(window: &Marlin, points: &[Point]) -> Vec<Point> {
         let window_size = window.state.window.inner_size();
-        let dims = (window_size.width as f32, window_size.height as f32);
+        let winit_scale_factor = window.state.window.scale_factor() as f32;
+        let dims = (window_size.width as f32 / winit_scale_factor, window_size.height as f32 / winit_scale_factor);
         let mut normalized: Vec<Point> = vec![];
         for point in points {
             normalized.push(Point::new(point.position[0] / dims.0, point.position[1] / dims.1, point.color));
@@ -78,7 +80,7 @@ impl Entity {
     }
 }
 
-struct WindowState {
+pub struct WindowState {
     surface: wgpu::Surface,
     device: wgpu::Device,
     queue: wgpu::Queue,
@@ -327,15 +329,21 @@ pub struct Marlin {
 impl Marlin {
 
 
-    pub async fn new() -> Self {
+    pub async fn new(width: f32, height: f32) -> Self {
         let event_loop = EventLoop::new();
-        let window = WindowBuilder::new().build(&event_loop).unwrap();
+        // let window = WindowBuilder::new().build(&event_loop).unwrap();
+        let pre_window = WindowBuilder::new();
+        let window = WindowBuilder::with_inner_size(pre_window, LogicalSize::new(width, height));
 
         Self {
-            state: WindowState::new(window).await,
+            state: WindowState::new(window.build(&event_loop).unwrap()).await,
             event_loop,
             entities: vec![]
         }
+    }
+
+    pub fn state(&mut self) -> &mut WindowState {
+        &mut self.state
     }
 
     pub fn add_entity(&mut self, entity: Entity) {
