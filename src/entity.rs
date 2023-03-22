@@ -19,7 +19,6 @@ impl Point {
             array_stride: std::mem::size_of::<Point>() as wgpu::BufferAddress,
             step_mode: wgpu::VertexStepMode::Vertex,                            
             attributes: &[
-                // 3.
                 wgpu::VertexAttribute {
                     offset: 0,                             
                     shader_location: 0,                    
@@ -41,11 +40,17 @@ pub struct Entity {
 }
 
 impl Entity {
-    pub fn from_points(points: Vec<Point>) -> Self {
+
+    fn point_order_from_points(points: &[Point]) -> Vec<u32> {
         let mut order: Vec<u32> = vec![];
         for (i, _) in points.iter().enumerate() {
             order.push(i as u32);
         }
+        order
+    }
+
+    pub fn from_points(points: Vec<Point>) -> Self {
+        let order = Entity::point_order_from_points(&points);
         Self {
             points,
             point_order: order,
