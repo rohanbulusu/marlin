@@ -1,8 +1,6 @@
 mod marlin;
-mod entity;
 
-use marlin::{Marlin};
-use crate::entity::{Entity, Point};
+use marlin::{Marlin, Entity, Point};
 
 #[tokio::main]
 async fn main() {
