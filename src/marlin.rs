@@ -25,14 +25,14 @@ impl Point {
 
     fn desc<'a>() -> wgpu::VertexBufferLayout<'a> {
         wgpu::VertexBufferLayout {
-            array_stride: std::mem::size_of::<Point>() as wgpu::BufferAddress, // 1.
-            step_mode: wgpu::VertexStepMode::Vertex,                            // 2.
+            array_stride: std::mem::size_of::<Point>() as wgpu::BufferAddress,
+            step_mode: wgpu::VertexStepMode::Vertex,                            
             attributes: &[
                 // 3.
                 wgpu::VertexAttribute {
-                    offset: 0,                             // 4.
-                    shader_location: 0,                    // 5.
-                    format: wgpu::VertexFormat::Float32x3, // 6.
+                    offset: 0,                             
+                    shader_location: 0,                    
+                    format: wgpu::VertexFormat::Float32x3, 
                 },
                 wgpu::VertexAttribute {
                     offset: std::mem::size_of::<[f32; 3]>() as wgpu::BufferAddress,
@@ -72,7 +72,6 @@ struct WindowState {
 }
 
 fn get_device_limitations() -> wgpu::Limits {
-    // if running on WebAssembly
     if cfg!(target_arch = "wasm32") {
         return wgpu::Limits::downlevel_webgl2_defaults();
     }
@@ -287,7 +286,6 @@ impl WindowState {
 
                 render_pass.set_vertex_buffer(0, vertex_buffer.slice(..));
                 render_pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
-                //render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
                 render_pass.draw(0..(entity.points.len() as u32), 0..1);
             }
         }
@@ -351,8 +349,6 @@ impl Marlin {
                     }
                 }
                 Event::MainEventsCleared => {
-                    // RedrawRequested will only trigger once, unless we manually
-                    // request it.
                     self.state.window().request_redraw();
                 }
                 Event::WindowEvent {
