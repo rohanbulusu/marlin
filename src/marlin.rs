@@ -59,10 +59,20 @@ impl Entity {
         order
     }
 
-    pub fn from_points(points: Vec<Point>) -> Self {
+    fn normalize_points(window: &Marlin, points: &[Point]) -> Vec<Point> {
+        let window_size = window.state.window.outer_size();
+        let dims = (window_size.width as f32, window_size.height as f32);
+        let mut normalized: Vec<Point> = vec![];
+        for point in points {
+            normalized.push(Point::new(point.position[0] / dims.0, point.position[1] / dims.1, point.color));
+        }
+        normalized
+    }
+
+    pub fn from_points(window: &Marlin, points: Vec<Point>) -> Self {
         let order = Entity::point_order_from_points(&points);
         Self {
-            points,
+            points: Entity::normalize_points(window, &points),
             point_order: order,
         }
     }
@@ -333,7 +343,7 @@ impl Marlin {
     }
 
     pub fn draw_point(&mut self, x: f32, y: f32, color: [f32; 3]) {
-        let point = Entity::from_points(vec![Point::new(x, y, color)]);
+        let point = Entity::from_points(&self, vec![Point::new(x, y, color)]);
         self.entities.push(point);
     }
 
