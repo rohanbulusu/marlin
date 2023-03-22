@@ -60,7 +60,7 @@ impl Entity {
     }
 
     fn normalize_points(window: &Marlin, points: &[Point]) -> Vec<Point> {
-        let window_size = window.state.window.outer_size();
+        let window_size = window.state.window.inner_size();
         let dims = (window_size.width as f32, window_size.height as f32);
         let mut normalized: Vec<Point> = vec![];
         for point in points {
