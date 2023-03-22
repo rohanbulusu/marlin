@@ -20,7 +20,7 @@ async fn main() {
     ]);
 
     window.add_entity(tri);
-    // window.add_entity(weird);
+    window.add_entity(weird);
 
     window.run().await;
 

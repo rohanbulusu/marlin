@@ -250,7 +250,7 @@ impl WindowState {
 
     fn update(&self) {}
 
-    fn render(&self, entity: &Entity) -> Result<(), wgpu::SurfaceError> {
+    fn render(&self, entities: &[Entity]) -> Result<(), wgpu::SurfaceError> {
         let render_surface = self.surface.get_current_texture()?;
         let view = render_surface
             .texture
@@ -261,37 +261,40 @@ impl WindowState {
                 label: Some("Render Encoder"),
             });
 
-        let vertex_buffer =
-            create_vertex_buffer(&self.device, "Entity Vertex Buffer", &entity.points[..]);
-        let index_buffer =
-            create_index_buffer(&self.device, "Entity Index Buffer", &entity.point_order[..]);
+        for entity in entities {
 
-        {
-            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("Render Pass"),
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &view,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color {
-                            r: 0.1,
-                            g: 0.2,
-                            b: 0.3,
-                            a: 1.0,
-                        }),
-                        store: true,
-                    },
-                })],
-                depth_stencil_attachment: None,
-            });
+            let vertex_buffer =
+                create_vertex_buffer(&self.device, "Entity Vertex Buffer", &entity.points[..]);
+            let index_buffer =
+                create_index_buffer(&self.device, "Entity Index Buffer", &entity.point_order[..]);
 
-            render_pass.set_pipeline(&self.render_pipeline); // 2.
-                                                             // render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
+            {
+                let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    label: Some("Render Pass"),
+                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                        view: &view,
+                        resolve_target: None,
+                        ops: wgpu::Operations {
+                            load: wgpu::LoadOp::Clear(wgpu::Color {
+                                r: 0.1,
+                                g: 0.2,
+                                b: 0.3,
+                                a: 1.0,
+                            }),
+                            store: true,
+                        },
+                    })],
+                    depth_stencil_attachment: None,
+                });
 
-            render_pass.set_vertex_buffer(0, vertex_buffer.slice(..));
-            render_pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
-            //render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
-            render_pass.draw(0..(entity.points.len() as u32), 0..1);
+                render_pass.set_pipeline(&self.render_pipeline); // 2.
+                                                                 // render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
+
+                render_pass.set_vertex_buffer(0, vertex_buffer.slice(..));
+                render_pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+                //render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+                render_pass.draw(0..(entity.points.len() as u32), 0..1);
+            }
         }
 
         // submit will accept anything that implements IntoIter
@@ -302,8 +305,8 @@ impl WindowState {
     }
 }
 
-pub fn to_srgb(rgb: f64) -> f64 {
-    ((rgb / 255.0 + 0.055) / 1.055).powf(2.4)
+pub fn to_srgb(channel_value: f64) -> f64 {
+    ((channel_value / 255.0 + 0.055) / 1.055).powf(2.4)
 }
 
 pub struct Marlin {
@@ -342,16 +345,14 @@ impl Marlin {
                 Event::RedrawRequested(window_id) if window_id == self.state.window().id() => {
                     self.state.update();
 
-                    for entity in &self.entities {
-                        match self.state.render(entity) {
-                            Ok(_) => {}
-                            // Exit if the surface is lost
-                            Err(wgpu::SurfaceError::Lost) => *control_flow = ControlFlow::Exit,
-                            // The system is out of memory, we should probably quit
-                            Err(wgpu::SurfaceError::OutOfMemory) => *control_flow = ControlFlow::Exit,
-                            // All other errors (Outdated, Timeout) should be resolved by the next frame
-                            Err(e) => eprintln!("{:?}", e),
-                        }
+                    match self.state.render(&self.entities) {
+                        Ok(_) => {}
+                        // Exit if the surface is lost
+                        Err(wgpu::SurfaceError::Lost) => *control_flow = ControlFlow::Exit,
+                        // The system is out of memory, we should probably quit
+                        Err(wgpu::SurfaceError::OutOfMemory) => *control_flow = ControlFlow::Exit,
+                        // All other errors (Outdated, Timeout) should be resolved by the next frame
+                        Err(e) => eprintln!("{:?}", e),
                     }
                 }
                 Event::MainEventsCleared => {
