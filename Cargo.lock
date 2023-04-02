@@ -720,6 +720,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "hebrides"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b55b51f032ccd4876ad1afafdfa2bc81c646f5a4ae873a92392483d532913974"
+
+[[package]]
 name = "heck"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -935,6 +941,7 @@ version = "0.1.0"
 dependencies = [
  "bytemuck",
  "env_logger",
+ "hebrides",
  "mini-redis",
  "tokio",
  "wgpu",
