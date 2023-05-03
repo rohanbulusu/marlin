@@ -10,7 +10,7 @@ tokio = {version = "1", features = ["full"]}
 mini-redis = "0.4"
 winit = "0.27"
 env_logger = "0.10"
-wgpu = "0.14"
+wgpu = "0.15"
 bytemuck = { version = "1.12", features = [ "derive" ] }
 
-hebrides = "0.1.2"
+hebrides = "0.1.45"
