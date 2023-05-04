@@ -1,12 +1,12 @@
 
-pub const BLACK: Color = Color { rgba: [0, 0, 0, 255] };
-pub const WHITE: Color = Color { rgba: [255, 255, 255,255] };
-pub const RED: Color = Color { rgba: [235, 64, 52, 255] };
-pub const BLUE: Color = Color { rgba: [20, 152, 252, 255] };
+pub const BLACK: Color = Color { channels: [0, 0, 0, 255] };
+pub const WHITE: Color = Color { channels: [255, 255, 255,255] };
+pub const RED: Color = Color { channels: [235, 64, 52, 255] };
+pub const BLUE: Color = Color { channels: [20, 152, 252, 255] };
 
 #[derive(Clone, Copy, PartialEq)]
 pub struct Color {
-	rgba: [u32; 4]
+	channels: [u32; 4]
 }
 
 impl Color {
@@ -33,20 +33,41 @@ impl Color {
 			panic!("a value {} out of bounds", a)
 		}
 		Self {
-			rgba: [r, g, b, a],
+			channels: [r, g, b, a],
 		}
 	}
 
 	pub fn as_slice(&self) -> &[u32; 4] {
-		&self.rgba
+		&self.channels
 	}
 
 	pub fn in_percentages(&self) -> [f32; 3] {
 		[
-			self.rgba[0] as f32 / 255.0,
-			self.rgba[1] as f32 / 255.0,
-			self.rgba[2] as f32 / 255.0
+			self.channels[0] as f32 / 255.0,
+			self.channels[1] as f32 / 255.0,
+			self.channels[2] as f32 / 255.0
 		]
+	}
+
+	pub fn mix(colors: &[Color]) -> Color {
+		let mut mixing_channels = [0; 4];
+
+		for color in colors {
+			for (i, mixing_channel) in mixing_channels.iter_mut().enumerate() {
+				*mixing_channel += color.channels[i];
+			}
+		}
+
+		for mixing_channel in &mut mixing_channels {
+			*mixing_channel /= colors.len() as u32;
+		}
+
+		Color::with_alpha(
+			mixing_channels[0],
+			mixing_channels[1],
+			mixing_channels[2],
+			mixing_channels[3]
+		)
 	}
 
 }

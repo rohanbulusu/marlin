@@ -2,7 +2,7 @@
 use wgpu::util::DeviceExt;
 use hebrides::linal::Vector;
 
-use crate::colors::Color;
+use crate::colors::{Color, BLACK};
 
 
 #[repr(C)]
@@ -44,6 +44,19 @@ impl Vertex {
         Vector::new(self.position.to_vec())
     }
 
+    pub fn average(points: &[Vertex]) -> Vertex {
+        let mut neutral = Vertex::new(0.0, 0.0, 0.0, BLACK);
+        let mut colors = Vec::with_capacity(points.len());
+        for point in points {
+            for i in 0..3 {
+                neutral.position[i] += point.position[i];
+            }
+            colors.push(point.color.into());
+        }
+        neutral.color = Color::mix(colors.as_slice()).in_percentages();
+        neutral
+    }
+
 }
 
 impl std::fmt::Display for Vertex {
@@ -58,10 +71,24 @@ impl From<Vertex> for Vector<f32> {
     }
 }
 
+pub struct SurfaceDimensions {
+    pub horizontal: f32,
+    pub vertical: f32
+}
+
+impl SurfaceDimensions {
+
+    pub fn new(horizontal: f32, vertical: f32) -> SurfaceDimensions {
+        Self { horizontal, vertical }
+    }
+
+}
+
 pub struct Entity {
-    vertices: Vec<Vertex>,
+    pub vertices: Vec<Vertex>,
     vertex_buffer: wgpu::Buffer,
-    render_pipeline: wgpu::RenderPipeline
+    render_pipeline: wgpu::RenderPipeline,
+    pub surface_dimensions: SurfaceDimensions
 }
 
 impl Entity {
@@ -124,10 +151,13 @@ impl Entity {
             multiview: None
         });
 
+        let surface_dimensions = SurfaceDimensions::new(width, height);
+
         Self { 
             vertices: points, 
             vertex_buffer, 
-            render_pipeline 
+            render_pipeline,
+            surface_dimensions
         }
     }
 

@@ -30,51 +30,105 @@ impl Into<String> for SceneName {
     }
 }
 
-pub struct ButtonBounds {
+pub struct ButtonDimensions {
     horizontal: f32,
     vertical: f32
 }
 
-impl ButtonBounds {
+impl ButtonDimensions {
 
-    pub fn new(horizontal: f32, vertical: f32) -> ButtonBounds {
+    pub fn new(horizontal: f32, vertical: f32) -> ButtonDimensions {
         Self { horizontal, vertical }
     }
 
 }
 
-pub struct VirtualButton {
+pub struct Button {
     inhabiting_scene: SceneName,
     center: Vertex,
     scene_request: SceneName,
-    bounds: ButtonBounds
+    entity: Entity,
+    dimensions: ButtonDimensions
 }
 
-impl VirtualButton {
+impl Button {
 
-    pub fn new(inhabiting_scene: SceneName, center: Vertex, scene_request: SceneName, width: f32, height: f32) -> VirtualButton {
+    pub fn new(inhabiting_scene: SceneName, scene_request: SceneName, entity: Entity) -> Button {
+        
+        let dimensions = ButtonDimensions::new(
+            (Self::leftmost_value(&entity) - Self::rightmost_value(&entity)).abs(),
+            (Self::bottommost_value(&entity) - Self::topmost_value(&entity)).abs()
+        );
+
+        let center = Vertex::average(&entity.vertices);
+
         Self {
             inhabiting_scene,
             center,
             scene_request,
-            bounds: ButtonBounds::new(width, height)
+            entity,
+            dimensions
         }
     }
 
+    fn leftmost_value(entity: &Entity) -> f32 {
+        let vertices = &entity.vertices;
+        let mut leftmost = &vertices[0];
+        for vertex in &vertices[1..vertices.len()] {
+            if vertex.position[0] < leftmost.position[0] {
+                leftmost = vertex;
+            }
+        }
+        leftmost.position[0] * entity.surface_dimensions.horizontal
+    }
+
+    fn rightmost_value(entity: &Entity) -> f32 {
+        let vertices = &entity.vertices;
+        let mut rightmost = &vertices[0];
+        for vertex in &vertices[1..vertices.len()] {
+            if vertex.position[0] > rightmost.position[0] {
+                rightmost = vertex;
+            }
+        }
+        rightmost.position[0] * entity.surface_dimensions.horizontal
+    }
+
+    fn topmost_value(entity: &Entity) -> f32 {
+        let vertices = &entity.vertices;
+        let mut topmost = &vertices[0];
+        for vertex in &vertices[1..vertices.len()] {
+            if vertex.position[1] > topmost.position[1] {
+                topmost = vertex;
+            }
+        }
+        topmost.position[1] * entity.surface_dimensions.vertical
+    }
+
+    fn bottommost_value(entity: &Entity) -> f32 {
+        let vertices = &entity.vertices;
+        let mut bottommost = &vertices[0];
+        for vertex in &vertices[1..vertices.len()] {
+            if vertex.position[1] < bottommost.position[1] {
+                bottommost = vertex;
+            }
+        }
+        bottommost.position[1] * entity.surface_dimensions.vertical
+    }
+
     pub fn left_bound(&self) -> f64 {
-        (self.center.position[0] - self.bounds.horizontal / 3.5) as f64
+        (self.center.position[0] - self.dimensions.horizontal / 3.5) as f64
     }
 
     pub fn right_bound(&self) -> f64 {
-        (self.center.position[0] + self.bounds.horizontal / 3.5) as f64
+        (self.center.position[0] + self.dimensions.horizontal / 3.5) as f64
     }
 
     pub fn top_bound(&self) -> f64 {
-        (self.center.position[1] + self.bounds.vertical / 3.5) as f64
+        (self.center.position[1] + self.dimensions.vertical / 3.5) as f64
     }
 
     pub fn bottom_bound(&self) -> f64 {
-        (self.center.position[1] - self.bounds.vertical / 3.5) as f64
+        (self.center.position[1] - self.dimensions.vertical / 3.5) as f64
     }
 
 }
@@ -141,7 +195,7 @@ pub struct MasterWindowState {
     size: winit::dpi::PhysicalSize<u32>,
     window: Window,
     cur_scene: SceneName,
-    buttons: Vec<VirtualButton>,
+    buttons: Vec<Button>,
     scenes: HashMap<SceneName, Vec<Entity>>,
     mouse_position: MousePosition
 }
@@ -226,61 +280,25 @@ impl MasterWindowState {
 
     }
 
-    fn leftmost_value(vertices: &Vec<Vertex>) -> f32 {
-        let mut leftmost = &vertices[0];
-        for vertex in &vertices[1..vertices.len()] {
-            if vertex.position[0] < leftmost.position[0] {
-                leftmost = vertex;
-            }
-        }
-        leftmost.position[0]
-    }
-
-    fn rightmost_value(vertices: &Vec<Vertex>) -> f32 {
-        let mut rightmost = &vertices[0];
-        for vertex in &vertices[1..vertices.len()] {
-            if vertex.position[0] > rightmost.position[0] {
-                rightmost = vertex;
-            }
-        }
-        rightmost.position[0]
-    }
-
-    fn topmost_value(vertices: &Vec<Vertex>) -> f32 {
-        let mut topmost = &vertices[0];
-        for vertex in &vertices[1..vertices.len()] {
-            if vertex.position[1] > topmost.position[1] {
-                topmost = vertex;
-            }
-        }
-        topmost.position[1]
-    }
-
-    fn bottommost_value(vertices: &Vec<Vertex>) -> f32 {
-        let mut bottommost = &vertices[0];
-        for vertex in &vertices[1..vertices.len()] {
-            if vertex.position[1] < bottommost.position[1] {
-                bottommost = vertex;
-            }
-        }
-        bottommost.position[1]
-    }
-
     pub fn add_button(&mut self, scene: &SceneName, shape: &ShapeKind, vertices: Vec<Vertex>, scene_request: SceneName) {
-        
-        let button_x = vertices.iter().map(|v| v.position[0]).sum::<f32>() / shape.requisite_points() as f32;
-        let button_y = vertices.iter().map(|v| v.position[1]).sum::<f32>() / shape.requisite_points() as f32;
 
-        let button = VirtualButton::new(
+        let entity = EntityBuilder::from_shape(
+            *shape,
+            vertices,
+        ).unwrap().build(
+            &self.device,
+            &self.config,
+            self.size.width,
+            self.size.height
+        );
+
+        let button = Button::new(
             *scene,
-            Vertex::new(button_x, button_y, 0.0, vertices[0].color.into()),
             scene_request,
-            (Self::leftmost_value(&vertices) - Self::rightmost_value(&vertices)).abs(),
-            (Self::topmost_value(&vertices) - Self::bottommost_value(&vertices)).abs()
+            entity
         );
 
         self.buttons.push(button);
-        self.add_shape(scene, shape, vertices);
     }
 
     pub fn next_scene(&self) -> SceneName {
@@ -359,7 +377,46 @@ impl MasterWindowState {
         let output = self.surface.get_current_texture()?;
         let view = output.texture.create_view(&wgpu::TextureViewDescriptor::default());
 
-        for entity in self.scenes.get(&self.cur_scene).unwrap() {
+        let registered_entities = self.scenes.get(&self.cur_scene).unwrap();
+
+        for entity in registered_entities {
+
+            let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Render Encoder")
+            });
+
+            {
+                let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    label: Some("Render Pass"),
+                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                        view: &view,
+                        resolve_target: None,
+                        ops: wgpu::Operations {
+                            load: wgpu::LoadOp::Load,
+                            store: true
+                        }
+                    })],
+                    depth_stencil_attachment: None
+                });
+
+                render_pass.set_pipeline(entity.pipeline());
+                // println!("{}", entity.num_vertices());
+                render_pass.set_vertex_buffer(0, entity.vertices().slice(..));
+                render_pass.draw(0..entity.num_vertices(), 0..1);
+
+            }
+
+            self.queue.submit(std::iter::once(encoder.finish()));
+
+        }
+
+        let button_entities = self.buttons.iter().map(|b| &b.entity);
+
+        for (button, entity) in self.buttons.iter().zip(button_entities) {
+
+            if button.inhabiting_scene != self.cur_scene {
+                continue;
+            }
 
             let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("Render Encoder")
@@ -420,8 +477,6 @@ impl MasterWindowState {
     }
 
 }
-
-
 
 
 
